@@ -11,19 +11,16 @@ nchnls = 2
 ;  	Simple AM synth with analoge in and out
 ;	See comment below for wiring
 ;------------------------------------------------------
-	;gihandle BelaOSCinit 9999
+	gihandle BelaOSCinit 9999
 
 	instr 1
 
 	ihandle = 0
-	idest = "/something"
 
 	ipin = 0
 	ksig digiInBela ipin
 
-	ksig digiInBela2 ipin
-
-	;kp bOSClisten ihandle, idest	
+	kp BelaOSClisten ihandle, "/Fader1/x"
 
 	
 

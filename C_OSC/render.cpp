@@ -24,6 +24,7 @@
 #include <getopt.h>
 #include <Bela.h>
 #include <Midi.h>
+#include <Scope.h>
 #include <csound/csound.hpp>
 #include <csound/plugin.h>
 #include <vector>
@@ -35,8 +36,6 @@
 
 OSCServer oscServer;
 
-#define ANCHNS 8
-
 static int OpenMidiInDevice(CSOUND *csound, void **userData, const char *dev);
 static int CloseMidiInDevice(CSOUND *csound, void *userData);
 static int ReadMidiData(CSOUND *csound, void *userData, unsigned char *mbuf,
@@ -45,9 +44,6 @@ static int OpenMidiOutDevice(CSOUND *csound, void **userData, const char *dev);
 static int CloseMidiOutDevice(CSOUND *csound, void *userData);
 static int WriteMidiData(CSOUND *csound, void *userData, const unsigned char *mbuf,
 			 int nbytes);
-
-
-asfghadsfhadfhgas
 
 /** DigiIn opcode 
     ksig digiInBela ipin
@@ -99,53 +95,6 @@ struct DigiIn : csnd::Plugin<1, 1> {
   }
 };
 
-struct DigiIn2 : csnd::Plugin<1, 1> {
-  int pin;
-  int fcount;
-  int frms;
-  int init_done;
-  BelaContext *context;
-  
-  int init() {
-    pin = (int) inargs[0];
-    if(pin < 0 ) pin = 0;
-    if(pin > 15) pin = 15;
-    context = (BelaContext *) csound->host_data();
-    fcount = 0;
-    init_done = 0;
-    frms = context->digitalFrames; 
-    return OK;
-  }
-
-  int kperf() {
-   if(!init_done) {
-      pinMode(context,0,pin,0);
-      init_done = 1;
-    }
-    outargs[0] = (MYFLT) digitalRead(context,fcount,pin);
-    fcount += nsmps;
-    fcount %= frms;
-    return OK;
-  }
-
-  int aperf() {
-    csnd::AudioSig out(this, outargs(0));
-    int cnt = fcount;
-    if(!init_done) {
-      pinMode(context,0,pin,0);
-      init_done = 1;
-    }
-    for (auto &s : out) {
-      s = (MYFLT) digitalRead(context,cnt,pin);
-      if(cnt == frms - 1) cnt = 0;
-      else cnt++;
-    }
-    fcount = cnt;
-    return OK;
-  }
-};
-
-
 /** DigiOut opcode 
     digiOutBela ksig,ipin
     digiOutBela asig,ipin
@@ -196,37 +145,62 @@ struct DigiOut : csnd::Plugin<0, 2> {
   }
 };
 
-// struct DigiOut : csnd::Plugin<0, 2> {
+/** DigiIO opcode 
+    allows change of direction & pin
+    ksig/asig are used for input or output
+    digiIOBela ksig,kpin,kdir
+    digiIOBela asig,apin,adir 
+*/
+struct DigiIO : csnd::Plugin<0, 3> {
+  int fcount;
+  int frms;
+  BelaContext *context;
+  
+  int init() {
+    context = (BelaContext *) csound->host_data();
+    fcount = 0;
+    frms = context->digitalFrames; 
+    return OK;
+  }
 
-struct BelaOSCinit : csnd::Plugin<1,1> {
-    
-    int port;
-    
-    int init() {
-        oscServer.setup((int) inargs[0]);
-        return OK; 
-    }
-    
-};
+  int kperf() {
+    int pin = (int) inargs[1];
+    if(pin < 0 ) pin = 0;
+    if(pin > 15) pin = 15;
+    int mode = inargs[2] > 0.0 ? 1 : 0;
+    pinMode(context,fcount,pin,mode);
+    if(mode)
+     digitalWrite(context,fcount,pin,(inargs[0] > 0.0 ? 1 : 0));
+    else
+     inargs[0] = (MYFLT) digitalRead(context,fcount,pin);
+    fcount += nsmps;
+    fcount %= frms;
+    return OK;
+  }
 
-
-struct BelaOSClisten : csnd::Plugin<1, 2> {
-    
-    const char* dest = "/Fader1/x";
-    int init() {
-        return OK;
+  int aperf() {
+    csnd::AudioSig sig(this, inargs(0));
+    csnd::AudioSig pins(this, inargs(1));
+    csnd::AudioSig modes(this, inargs(2));
+    int cnt = fcount;
+    int n = 0, pin, mode;
+    for (auto &s : sig) {
+      pin = pins[n];
+      if(pin < 0 ) pin = 0;
+      if(pin > 15) pin = 15;
+      mode = modes[n] > 0.0 ? 1 : 0;
+      pinModeOnce(context,cnt,pin,mode);
+      if(mode)
+       digitalWriteOnce(context,cnt,pin,(s > 0.0 ? 1 : 0));
+      else
+       s = (MYFLT) digitalRead(context,cnt,pin);
+      if(cnt == frms - 1) cnt = 0;
+      else cnt++;
+      n++;
     }
-    
-    int kperf() {
-        // receive OSC messages, parse them, and send back an acknowledgment
-        while (oscServer.messageWaiting()){
-            oscpkt::Message p = oscServer.popMessage();
-            const std::string &add = p.addressPattern();
-            rt_printf("%s\n",add.c_str());
-        }
-        return OK; 
-    }
-    
+    fcount = cnt;
+    return OK;
+  }
 };
 
 struct CsChan {
@@ -240,8 +214,48 @@ struct CsData {
   int blocksize;
   std::atomic_int res;
   int count;
-  CsChan channel[ANCHNS];
-  CsChan ochannel[ANCHNS];
+  std::vector<CsChan> channel;
+  std::vector<CsChan> ochannel;
+  CsChan schannel;
+  Scope scope;
+};
+// struct DigiOut : csnd::Plugin<0, 2> {
+
+struct BelaOSCinit : csnd::Plugin<1,1> {
+    
+    int port;
+    
+    int init() {
+    	int port = (int) inargs[0];
+        oscServer.setup(port);
+        rt_printf("Listening on port %i", port);
+        return OK; 
+    }
+    
+};
+
+
+struct BelaOSClisten : csnd::Plugin<1, 2> {
+    
+    int init() {
+        return OK;
+    }
+    
+    int kperf() {
+    	const char* dest = inargs.str_data(1).data;
+
+        // receive OSC messages, parse them, and send back an acknowledgment
+        while (oscServer.messageWaiting()){
+            oscpkt::Message p = oscServer.popMessage();
+            //const std::string &add = p.addressPattern();
+            float a;
+            if (p.match(dest).popFloat(a).isOkNoMoreArgs()) {
+            	//rt_printf("%f\n",a);
+            	outargs[0] = a;
+            }
+        }
+        return OK; 
+    }
 };
 
 bool csound_setup(BelaContext *context, void *p)
@@ -258,10 +272,9 @@ bool csound_setup(BelaContext *context, void *p)
     return false;
   }
 
-  if(context->analogInChannels != context->analogOutChannels) {
-    printf("Error: number of analog inputs != number of analog outputs.\n");
-    return false;
-  }
+  /* allocate analog channel memory */
+  csData->channel.resize(context->analogInChannels);
+  csData->ochannel.resize(context->analogOutChannels);
   
   /* set up Csound */
   csound = new Csound();
@@ -276,7 +289,6 @@ bool csound_setup(BelaContext *context, void *p)
   csound->SetExternalMidiWriteCallback(WriteMidiData);
   csound->SetExternalMidiOutCloseCallback(CloseMidiOutDevice);
   /* set up digi opcodes */
-  
   if(csnd::plugin<DigiIn>((csnd::Csound *) csound->GetCsound(), "digiInBela",
 			  "k","i", csnd::thread::ik) != 0)
     printf("Warning: could not add digiInBela k-rate opcode\n");
@@ -289,23 +301,22 @@ bool csound_setup(BelaContext *context, void *p)
   if(csnd::plugin<DigiOut>((csnd::Csound *) csound->GetCsound(), "digiOutBela" ,
 			   "", "ai", csnd::thread::ia) != 0)
     printf("Warning: could not add digiOutBela a-rate opcode\n");
-
-
-  if(csnd::plugin<DigiIn2>((csnd::Csound *) csound->GetCsound(), "digiInBela2",
-			  "k","i", csnd::thread::ik) != 0)
-    printf("Warning: could not add digiInBela2 k-rate opcode\n");
-  if(csnd::plugin<DigiIn2>((csnd::Csound *) csound->GetCsound(), "digiInBela2",
-			  "a", "i", csnd::thread::ia) != 0)
-    printf("Warning: could not add digiInBela2 a-rate opcode\n");
-
-
+  if(csnd::plugin<DigiIO>((csnd::Csound *) csound->GetCsound(), "digiIOBela" ,
+			   "", "kkk", csnd::thread::ik) != 0)
+    printf("Warning: could not add digiIOBela k-rate opcode\n");
+  if(csnd::plugin<DigiIO>((csnd::Csound *) csound->GetCsound(), "digiIOBela" ,
+			   "", "aaa", csnd::thread::ia) != 0)
+    printf("Warning: could not add digiIOBela a-rate opcode\n");
+  
   if(csnd::plugin<BelaOSCinit>((csnd::Csound *) csound->GetCsound(), "BelaOSCinit" ,
                 "i", "i", csnd::thread::i) != 0)
     printf("Warning: could not add BelaOSCinit i-rate opcode\n");
-  if(csnd::plugin<BelaOSClisten>((csnd::Csound *) csound->GetCsound(), "bOSClisten" ,
-                "k", "kk", csnd::thread::k) != 0)
+  if(csnd::plugin<BelaOSClisten>((csnd::Csound *) csound->GetCsound(), "BelaOSClisten" ,
+                "k", "kS", csnd::thread::k) != 0)
     printf("Warning: could not add BelaOSCinit k-rate opcode\n");
 
+  
+  
   /* compile CSD */  
   if((csData->res = csound->Compile(numArgs, args)) != 0) {
     printf("Error: Csound could not compile CSD file.\n");
@@ -315,12 +326,19 @@ bool csound_setup(BelaContext *context, void *p)
   csData->count = 0;
 
   /* set up the channels */
-  for(int i=0; i < ANCHNS; i++) {
+  for(unsigned int i = 0; i < csData->channel.size(); i++) {
     csData->channel[i].samples.resize(csound->GetKsmps());
     csData->channel[i].name << "analogIn" << i;
+  }
+
+  for(unsigned int i = 0; i < csData->ochannel.size(); i++) {
     csData->ochannel[i].samples.resize(csound->GetKsmps());
     csData->ochannel[i].name << "analogOut" << i;
   }
+
+  csData->schannel.samples.resize(csound->GetKsmps());
+  csData->schannel.name << "scope";
+  csData->scope.setup(1, context->audioSampleRate);
   
   return true;
 }
@@ -329,19 +347,20 @@ void csound_render(BelaContext *context, void *p)
 {
   CsData *csData = (CsData *) p;
   if(csData->res == 0) {
-    int i,k,count, frmcount,blocksize,res = csData->res;
+    unsigned int i,k,count, frmcount,blocksize;
+    int res = csData->res;
     unsigned int n;
     Csound *csound = csData->csound;
     MYFLT scal = csound->Get0dBFS();
     MYFLT* audioIn = csound->GetSpin();
     MYFLT* audioOut = csound->GetSpout();
     int nchnls = csound->GetNchnls();
-    int chns = (unsigned int) nchnls < context->audioOutChannels ?
+    unsigned int chns = (unsigned int) nchnls < context->audioOutChannels ?
       nchnls : context->audioOutChannels;
-    int an_chns = context->analogInChannels > ANCHNS ?
-      ANCHNS : context->analogInChannels;
-    CsChan *channel = csData->channel;
-    CsChan *ochannel = csData->ochannel;
+    std::vector<CsChan> &channel = csData->channel;
+    std::vector<CsChan> &ochannel = csData->ochannel;
+    CsChan &schannel = csData->schannel;
+    Scope &scope = csData->scope;
     float frm = 0.f, incr =
       ((float) context->analogFrames)/context->audioFrames;
     count = csData->count;
@@ -352,32 +371,44 @@ void csound_render(BelaContext *context, void *p)
       if(count == blocksize) {
 	
 	/* set the channels */
-	for(i = 0; i < an_chns; i++) {
+	for(i = 0; i < channel.size(); i++) 
           csound->SetChannel(channel[i].name.str().c_str(),
 			     channel[i].samples.data());
-	  csound->GetAudioChannel(ochannel[i].name.str().c_str(),
-				  ochannel[i].samples.data());
-	}
+	 
 	/* run csound */
 	if((res = csound->PerformKsmps()) == 0) count = 0;
 	else break;
+
+        /* get the channels */
+        for(i = 0; i < ochannel.size(); i++) 
+	  csound->GetAudioChannel(ochannel[i].name.str().c_str(),
+				  ochannel[i].samples.data());
+	
+        /* get the scope data */
+        csound->GetAudioChannel(schannel.name.str().c_str(),
+				  schannel.samples.data());
 	
       }
       /* read/write audio data */
       for(i = 0; i < chns; i++){
-	audioIn[count+i] = audioRead(context,n,i);
-	audioWrite(context,n,i,audioOut[count+i]/scal);
+	 audioIn[count+i] = audioRead(context,n,i)*scal;
+	 audioWrite(context,n,i,audioOut[count+i]/scal);
       }
+      
       /* read analogue data 
          analogue frame pos frm gets incremented according to the
          ratio analogFrames/audioFrames.
       */
       frmcount = count/nchnls;
-      for(i = 0; i < an_chns; i++) {
-	k = (int) frm;
+      k = (int) frm;
+      for(i = 0; i < channel.size(); i++) 
         channel[i].samples[frmcount] = analogRead(context,k,i);
+
+      /* write analogue data */
+      for(i = 0; i < ochannel.size(); i++) 
 	analogWriteOnce(context,k,i,ochannel[i].samples[frmcount]); 
-      }	
+      
+      scope.log(schannel.samples[frmcount]);
     }
     csData->res = res;
     csData->count = count;
