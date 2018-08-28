@@ -219,9 +219,9 @@ struct CsData {
   CsChan schannel;
   Scope scope;
 };
-// struct DigiOut : csnd::Plugin<0, 2> {
 
-struct BelaOSCinit : csnd::Plugin<1,1> {
+struct BelaOSCinit : csnd::Plugin<1,1>
+{
     
     int port;
     
@@ -234,24 +234,32 @@ struct BelaOSCinit : csnd::Plugin<1,1> {
     
 };
 
+constexpr int NumOscMsgs = 6;
 
-struct BelaOSClisten : csnd::Plugin<1, 2> {
+struct BelaOSClisten : csnd::Plugin<1, 1 + NumOscMsgs*2>
+{
     
-    int init() {
+    int init()
+    {
         return OK;
     }
     
-    int kperf() {
-    	const char* dest = inargs.str_data(1).data;
-
-        // receive OSC messages, parse them, and send back an acknowledgment
+    int kperf()
+    {
         while (oscServer.messageWaiting()){
             oscpkt::Message p = oscServer.popMessage();
-            //const std::string &add = p.addressPattern();
-            float a;
-            if (p.match(dest).popFloat(a).isOkNoMoreArgs()) {
-            	//rt_printf("%f\n",a);
-            	outargs[0] = a;
+
+            for (int i = 0; i < NumOscMsgs; ++i) {
+				auto address = inargs.str_data(1 + i).data;
+				auto oscargs = p.match(address);
+				float a;
+
+				if (!oscargs) continue; // no address match
+				//rt_printf("%s\n", address);
+				if (oscargs.popFloat(a).isOkNoMoreArgs())
+					*(inargs.data(1 + 6 + i)) = a;
+				else
+					rt_printf("%s: got wrong number of params\n", address);
             }
         }
         return OK; 
@@ -312,7 +320,7 @@ bool csound_setup(BelaContext *context, void *p)
                 "i", "i", csnd::thread::i) != 0)
     printf("Warning: could not add BelaOSCinit i-rate opcode\n");
   if(csnd::plugin<BelaOSClisten>((csnd::Csound *) csound->GetCsound(), "BelaOSClisten" ,
-                "k", "kS", csnd::thread::k) != 0)
+                "k", "kSSSSSSkkkkkk", csnd::thread::k) != 0)
     printf("Warning: could not add BelaOSCinit k-rate opcode\n");
 
   

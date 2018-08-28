@@ -35,6 +35,12 @@ nchnls = 2
 		kDlyMix init 0.3
 		kDlyTime init 0.5
 		kDlyFeed init 0.3
+		klol1 init 0.
+		klol2 init 0.
+		klol3 init 0.
+		klol4 init 0.
+		klol5 init 0.
+		klol6 init 0.
 		
 ;		kk1 BelaOSClisten gidans1, "/dans1/rev/mix", "f", kRevMix
 ;		kRevMix BelaOSClisten gidans1, "/Fader1/x"
@@ -45,8 +51,8 @@ nchnls = 2
 ;		kk2 BelaOSClisten gidans1, "/Fader2/x", "f", kDlyMix	
 ;		kk3 BelaOSClisten gidans1, "/Fader3/x", "f", kDlyTime
 ;		kk4 BelaOSClisten gidans1, "/Fader4/x", "f", kDlyFeed
-		kDlyFeed BelaOSClisten gidans1, "/Fader4/x"
-
+;		kDlyFeed BelaOSClisten gidans1, "/Fader4/x"
+		knotused BelaOSClisten gidans1, "/1/fader1", "/1/fader2", "/1/fader3", "/1/fader4", "/1/toggle1", "/1/toggle2", klol1, klol2, klol3, klol4, klol5, klol6
 
 	; Arguments: DelayTime, Feedback, Filter, Distortion, Modulation, Mix
 
