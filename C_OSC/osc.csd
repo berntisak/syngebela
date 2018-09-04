@@ -25,13 +25,19 @@ nchnls = 2
 	
 	instr 1
 		aL, aR ins
+		aMono = aL + aR
+		aMono butterhp aMono, 120
+		aMono pareq aMono, 800, ampdb(-3), 1.5, 0
+		aMono pareq aMono, 400, ampdb(-3), 1.5, 0
+		aMono pareq aMono, 1200, ampdb(-2), 2, 0
+		aMono pareq aMono, 3000, ampdb(6), 0.5, 2
 		
-		kRevMix init 0.5
-		kRevSize init 0.5
+		kRevMix init 0
+		kRevSize init 0.85
 		
-		kDlyMix init 0.3
+		kDlyMix init 0
 		kDlyTime init 0.5
-		kDlyFeed init 0.5
+		kDlyFeed init 0.6
 		kStopSamples init 0
 		kSample1Play init 0
 		kSample2Play init 0
@@ -40,9 +46,8 @@ nchnls = 2
 		kSample5Play init 0
 		
 		kMicVol init 1
-		aL *= kMicVol
-		aR *= kMicVol
-		
+		aMono *= kMicVol
+
 		knotused BelaOSClisten gidans1, "/Delay/mix", "/Delay/time", "/Reverb/mix", "/Reverb/size", "/Sample/stop", \
 		"/Sample/1", "/Sample/2", "/Sample/3", "/Sample/4", "/Sample/5", "/Mic1/vol", kDlyMix, kDlyTime, kRevMix, \
 		kRevSize, kStopSamples, kSample1Play, kSample2Play, kSample3Play, kSample4Play, kSample5Play, kMicVol
@@ -72,15 +77,20 @@ nchnls = 2
 
 	; Arguments: DelayTime, Feedback, Filter, Distortion, Modulation, Mix
 
-		aL,aR TapeDelay aL,aR, kDlyTime, kDlyFeed, 0.8, 0.5, 0.1, kDlyMix*0.5
+		aMono_Basscut butterhp aMono, 250
+
+		aDlyL,aDlyR TapeDelay aMono_Basscut, kDlyTime, kDlyFeed, 0.8, 0.5, 0.1, 1
+		aDlyL *= kDlyMix
+		aDlyR *= kDlyMix
 		
-		arevL, arevR reverbsc aL, aR, 0.85, 4000
+		kRevSize scale kRevSize, 0.98, 0.8
+		arevL, arevR reverbsc aMono_Basscut+aDlyL, aMono_Basscut+aDlyR, kRevSize, 4000
 
 		
 		arevL *= kRevMix
 		arevR *= kRevMix
 		
-		outs aL+arevL,aR+arevR
+		outs aDlyL+arevL+aMono,aDlyR+arevR+aMono
 	endin
 
 	; SAMPLE PLAYBACK
@@ -98,9 +108,9 @@ nchnls = 2
 </CsInstruments>
 <CsScore>
 i1 1 86400
-f1 0 0 1 "spor1.wav" 0 0 0
-f2 0 0 1 "spor2.wav" 0 0 0
-f3 0 0 1 "spor3.wav" 0 0 0
+f1 0 0 1 "beats.wav" 0 0 0
+f2 0 0 1 "beats.wav" 0 0 0
+f3 0 0 1 "beats.wav" 0 0 0
 
 </CsScore>
 </CsoundSynthesizer>
