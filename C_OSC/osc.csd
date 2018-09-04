@@ -1,7 +1,7 @@
 /***** osc.csd *****/
 <CsoundSynthesizer>
 <CsOptions>
-;-m0d
+-m0d
 </CsOptions>
 <CsInstruments>
 ksmps = 16
@@ -108,9 +108,9 @@ nchnls = 2
 </CsInstruments>
 <CsScore>
 i1 1 86400
-f1 0 0 1 "beats.wav" 0 0 0
-f2 0 0 1 "beats.wav" 0 0 0
-f3 0 0 1 "beats.wav" 0 0 0
+f1 0 0 1 "spor1.wav" 0 0 0
+f2 0 0 1 "spor2.wav" 0 0 0
+f3 0 0 1 "spor3.wav" 0 0 0
 
 </CsScore>
 </CsoundSynthesizer>
