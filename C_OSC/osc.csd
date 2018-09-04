@@ -1,12 +1,18 @@
 /***** osc.csd *****/
 <CsoundSynthesizer>
 <CsOptions>
--m0d
+;-m0d
 </CsOptions>
 <CsInstruments>
-ksmps = 32
+ksmps = 16
 nchnls = 2
 0dbfs = 1
+
+;giSmpl1 ftgen 0, 0, 1, "spor1.wav", 0, 0, 0
+;giSmpl2 ftgen 0, 0, 1, "spor2.wav", 0, 0, 0
+;giSmpl3 ftgen 0, 0, 1, "spor3.wav", 0, 0, 0
+
+;giSoundFile   ftgen   0, 0, 262144, 1, "loop.wav", 0, 0, 0
 
 ;------------------------------------------------------
 ;	Audio in/out and analoge in to control gain
@@ -16,47 +22,57 @@ nchnls = 2
 	#include "pitchshifter.udo"
 	
 	gidans1 BelaOSCinit 9999
-
+	
 	instr 1
 		aL, aR ins
 		
-		klfo oscil 0.4, 0.2
-		kTrig metro  0.5
-		klfo += 0.5
-		
-		
-		;ain, kPitch, kFeedback, kDelay, kDryWet, kMode  xin
-
-		
-		; ktrigger, kmintim, kmaxnum, kinsnum, kwhen, kdur [, ip4] [, ip5] [...]
-;		schedkwhen kTrig, 0, 0, 2, 0, 1, 3
-		
 		kRevMix init 0.5
+		kRevSize init 0.5
+		
 		kDlyMix init 0.3
 		kDlyTime init 0.5
-		kDlyFeed init 0.3
-		klol1 init 0.
-		klol2 init 0.
-		klol3 init 0.
-		klol4 init 0.
-		klol5 init 0.
-		klol6 init 0.
+		kDlyFeed init 0.5
+		kStopSamples init 0
+		kSample1Play init 0
+		kSample2Play init 0
+		kSample3Play init 0
+		kSample4Play init 0
+		kSample5Play init 0
 		
-;		kk1 BelaOSClisten gidans1, "/dans1/rev/mix", "f", kRevMix
-;		kRevMix BelaOSClisten gidans1, "/Fader1/x"
+		kMicVol init 1
+		aL *= kMicVol
+		aR *= kMicVol
+		
+		knotused BelaOSClisten gidans1, "/Delay/mix", "/Delay/time", "/Reverb/mix", "/Reverb/size", "/Sample/stop", \
+		"/Sample/1", "/Sample/2", "/Sample/3", "/Sample/4", "/Sample/5", "/Mic1/vol", kDlyMix, kDlyTime, kRevMix, \
+		kRevSize, kStopSamples, kSample1Play, kSample2Play, kSample3Play, kSample4Play, kSample5Play, kMicVol
 
-;		kk2 BelaOSClisten gidans1, "/dans1/dly/mix", "f", kDlyMix
-;		kk3 BelaOSClisten gidans1, "/dans1/dly/time", "f", kDlyTime
-	
-;		kk2 BelaOSClisten gidans1, "/Fader2/x", "f", kDlyMix	
-;		kk3 BelaOSClisten gidans1, "/Fader3/x", "f", kDlyTime
-;		kk4 BelaOSClisten gidans1, "/Fader4/x", "f", kDlyFeed
-;		kDlyFeed BelaOSClisten gidans1, "/Fader4/x"
-		knotused BelaOSClisten gidans1, "/1/fader1", "/1/fader2", "/1/fader3", "/1/fader4", "/1/toggle1", "/1/toggle2", klol1, klol2, klol3, klol4, klol5, klol6
+		if kStopSamples == 1 then
+			turnoff2 2, 0, 0
+		endif
+		
+		
+		kSample1PlayTrig = kSample1Play == 1 && changed(kSample1Play) == 1 ? 1 : 0 
+		kSample1Length = ftlen(1)/sr
+
+		kSample2PlayTrig = kSample2Play == 1 && changed(kSample2Play) == 1 ? 1 : 0 
+		kSample2Length = ftlen(2)/sr
+		
+		printk2 kSample2Play
+		printk2 kSample3Play
+		
+		kSample3PlayTrig = kSample3Play == 1 && changed(kSample3Play) == 1 ? 1 : 0 
+		kSample3Length = ftlen(3)/sr
+		
+		; ktrigger, kmintim, kmaxnum, kinsnum, kwhen, kdur [, ip4] [, ip5] [...]
+		schedkwhen kSample1PlayTrig, 0, 0, 2, 0, kSample1Length, 1
+		schedkwhen kSample2PlayTrig, 0, 0, 2, 0, kSample2Length, 2
+		schedkwhen kSample3PlayTrig, 0, 0, 2, 0, kSample3Length, 3
+		
 
 	; Arguments: DelayTime, Feedback, Filter, Distortion, Modulation, Mix
 
-		aL,aR TapeDelay aL,aR, kDlyTime, kDlyFeed, 0.8, 0.5, 0.1, kDlyMix
+		aL,aR TapeDelay aL,aR, kDlyTime, kDlyFeed, 0.8, 0.5, 0.1, kDlyMix*0.5
 		
 		arevL, arevR reverbsc aL, aR, 0.85, 4000
 
@@ -71,18 +87,20 @@ nchnls = 2
 	
 	instr 2
 	
-	asig flooper2 1, 1, 0, 2, 0.025, p4
+	;asig flooper2 1, 1, 0, 2, 0.025, p4
 	
+	asigL, asigR loscil .8, 1, p4, 1
 
-    out asig
+    outs asigL, asigR
     
 	endin
 
 </CsInstruments>
 <CsScore>
-i1 0 86400
-f2 0 0 1 "fox.wav"0 0 0
-f3 0 0 1 "beats.wav" 0 0 0
+i1 1 86400
+f1 0 0 1 "spor1.wav" 0 0 0
+f2 0 0 1 "spor2.wav" 0 0 0
+f3 0 0 1 "spor3.wav" 0 0 0
 
 </CsScore>
 </CsoundSynthesizer>

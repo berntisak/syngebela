@@ -234,7 +234,7 @@ struct BelaOSCinit : csnd::Plugin<1,1>
     
 };
 
-constexpr int NumOscMsgs = 6;
+constexpr int NumOscMsgs = 11;
 
 struct BelaOSClisten : csnd::Plugin<1, 1 + NumOscMsgs*2>
 {
@@ -257,7 +257,7 @@ struct BelaOSClisten : csnd::Plugin<1, 1 + NumOscMsgs*2>
 				if (!oscargs) continue; // no address match
 				//rt_printf("%s\n", address);
 				if (oscargs.popFloat(a).isOkNoMoreArgs())
-					*(inargs.data(1 + 6 + i)) = a;
+					*(inargs.data(1 + NumOscMsgs + i)) = a;
 				else
 					rt_printf("%s: got wrong number of params\n", address);
             }
@@ -320,7 +320,7 @@ bool csound_setup(BelaContext *context, void *p)
                 "i", "i", csnd::thread::i) != 0)
     printf("Warning: could not add BelaOSCinit i-rate opcode\n");
   if(csnd::plugin<BelaOSClisten>((csnd::Csound *) csound->GetCsound(), "BelaOSClisten" ,
-                "k", "kSSSSSSkkkkkk", csnd::thread::k) != 0)
+                "k", "iSSSSSSSSSSSkkkkkkkkkkk", csnd::thread::k) != 0)
     printf("Warning: could not add BelaOSCinit k-rate opcode\n");
 
   
