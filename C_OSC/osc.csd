@@ -19,7 +19,10 @@ nchnls = 2
 ;------------------------------------------------------
 
 	#include "tapedelay.udo"
-	#include "pitchshifter.udo"
+	#include "lowpass.udo"
+	#include "highpass.udo"
+	#include "reverb.udo"
+	#include "reverse.udo"
 	
 	gidans1 BelaOSCinit 9999
 	
@@ -38,19 +41,28 @@ nchnls = 2
 		kDlyMix init 0
 		kDlyTime init 0.5
 		kDlyFeed init 0.6
+		
+		kReverseMix init 0
+		kHP_Cutoff init 0
+		
 		kStopSamples init 0
 		kSample1Play init 0
 		kSample2Play init 0
 		kSample3Play init 0
 		kSample4Play init 0
 		kSample5Play init 0
+		gkSampleVolume init 1
 		
 		kMicVol init 1
 		aMono *= kMicVol
+		
+		#include "/root/bela_id.inc"
 
-		knotused BelaOSClisten gidans1, "/Delay/mix", "/Delay/time", "/Reverb/mix", "/Reverb/size", "/Sample/stop", \
-		"/Sample/1", "/Sample/2", "/Sample/3", "/Sample/4", "/Sample/5", "/Mic1/vol", kDlyMix, kDlyTime, kRevMix, \
-		kRevSize, kStopSamples, kSample1Play, kSample2Play, kSample3Play, kSample4Play, kSample5Play, kMicVol
+		knotused BelaOSClisten gidans1, "/Delay/mix", "/Delay/time", "/Delay/feed","/Reverb/mix", "/Reverb/size", \
+		"/Sample/stop", "/Sample/1", "/Sample/2", "/Sample/3", "/Sample/4", "/Sample/5", "/Sample/volume", \
+		"/Reverse/mix", "/Filter/highpass", Sbela_id, kDlyMix, kDlyTime, kDlyFeed, kRevMix, kRevSize, \
+		kStopSamples, kSample1Play, kSample2Play, kSample3Play, kSample4Play, kSample5Play, gkSampleVolume, \
+		kReverseMix, kHP_Cutoff, kMicVol
 
 		if kStopSamples == 1 then
 			turnoff2 2, 0, 0
@@ -74,6 +86,34 @@ nchnls = 2
 		schedkwhen kSample2PlayTrig, 0, 0, 2, 0, kSample2Length, 2
 		schedkwhen kSample3PlayTrig, 0, 0, 2, 0, kSample3Length, 3
 		
+	; Filtering
+/*
+	Arguments: Cutoff_frequency, Resonance, Distortion
+    Defaults:  0.8, 0.3, 0
+
+	Cutoff frequency: 30Hz - 12000Hz
+	Resonance: 0 - 0.9
+	Distortion: 0 - 0.9
+	Mode:
+		0: lpf18 
+		1: moogladder
+		2: k35
+		3: zdf
+
+*/
+		aMono Highpass aMono, kHP_Cutoff*0.3, 0.1, 0, 3
+
+/* 
+
+	Arguments: Reverse_time, Speed, Dry/wet mix
+    Defaults:  0.1, 0, 0.5
+
+	Reverse time: 0.1s - 3s
+	Speed: 1x - 5x
+	Dry/wet mix: 0% - 100%
+	
+*/
+		aMono Reverse aMono, 0.75, 0, kReverseMix
 
 	; Arguments: DelayTime, Feedback, Filter, Distortion, Modulation, Mix
 
@@ -84,8 +124,22 @@ nchnls = 2
 		aDlyR *= kDlyMix
 		
 		kRevSize scale kRevSize, 0.98, 0.8
-		arevL, arevR reverbsc aMono_Basscut+aDlyL, aMono_Basscut+aDlyR, kRevSize, 4000
+		
+/*
+	Arguments: DecayTime, HighFreq_Cutoff, DryWet_Mix, Mode
+    Defaults:  0.85, 0.5, 0.5, 0
 
+	Decay Time: 0.1 - 1
+	Dampening/cutoff freq: 200Hz - 12000Hz
+	Dry/wet mix: 0% - 100%
+	Mode: 
+
+		0: reverbsc
+		1: freeverb
+
+*/
+		;arevL, arevR reverbsc aMono_Basscut+aDlyL, aMono_Basscut+aDlyR, kRevSize, 4000
+		arevL, arevR Reverb aMono_Basscut+aDlyL, aMono_Basscut+aDlyR, kRevSize, 0.5, 1, 0
 		
 		arevL *= kRevMix
 		arevR *= kRevMix
@@ -97,11 +151,9 @@ nchnls = 2
 	
 	instr 2
 	
-	;asig flooper2 1, 1, 0, 2, 0.025, p4
-	
 	asigL, asigR loscil .8, 1, p4, 1
 
-    outs asigL, asigR
+    outs asigL*gkSampleVolume, asigR*gkSampleVolume
     
 	endin
 
@@ -111,6 +163,8 @@ i1 1 86400
 f1 0 0 1 "spor1.wav" 0 0 0
 f2 0 0 1 "spor2.wav" 0 0 0
 f3 0 0 1 "spor3.wav" 0 0 0
+f4 0 0 1 "spor4.wav" 0 0 0
+f5 0 0 1 "spor5.wav" 0 0 0
 
 </CsScore>
 </CsoundSynthesizer>

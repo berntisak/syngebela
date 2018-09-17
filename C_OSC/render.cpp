@@ -234,7 +234,7 @@ struct BelaOSCinit : csnd::Plugin<1,1>
     
 };
 
-constexpr int NumOscMsgs = 11;
+constexpr int NumOscMsgs = 15;
 
 struct BelaOSClisten : csnd::Plugin<1, 1 + NumOscMsgs*2>
 {
@@ -320,7 +320,7 @@ bool csound_setup(BelaContext *context, void *p)
                 "i", "i", csnd::thread::i) != 0)
     printf("Warning: could not add BelaOSCinit i-rate opcode\n");
   if(csnd::plugin<BelaOSClisten>((csnd::Csound *) csound->GetCsound(), "BelaOSClisten" ,
-                "k", "iSSSSSSSSSSSkkkkkkkkkkk", csnd::thread::k) != 0)
+                "k", "iSSSSSSSSSSSSSSSkkkkkkkkkkkkkkk", csnd::thread::k) != 0)
     printf("Warning: could not add BelaOSCinit k-rate opcode\n");
 
   
