@@ -8,12 +8,6 @@ ksmps = 16
 nchnls = 2
 0dbfs = 1
 
-;giSmpl1 ftgen 0, 0, 1, "spor1.wav", 0, 0, 0
-;giSmpl2 ftgen 0, 0, 1, "spor2.wav", 0, 0, 0
-;giSmpl3 ftgen 0, 0, 1, "spor3.wav", 0, 0, 0
-
-;giSoundFile   ftgen   0, 0, 262144, 1, "loop.wav", 0, 0, 0
-
 ;------------------------------------------------------
 ;	Audio in/out and analoge in to control gain
 ;------------------------------------------------------
@@ -164,7 +158,17 @@ nchnls = 2
 	
 	instr 2
 	
-	asigL, asigR loscil .8, 1, p4, 1
+	ichnls = ftchnls(p4)
+	
+	if (ichnls == 1) then
+   		asigL loscil .8, 1, p4, 1
+   		asigR = 	asigL
+   	elseif (ichnls == 2) then
+		asigL, asigR loscil .8, 1, p4, 1
+	else
+   		asigL = 0
+   		asigR = 0
+	endif
 
     outs asigL*gkSampleVolume, asigR*gkSampleVolume
     
