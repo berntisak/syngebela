@@ -88,9 +88,9 @@ nchnls = 2
 		endif
 	
 		if kSample5PlayTrig == 1 && kSample5Play == 1 then 
-			schedkwhen kSample5PlayTrig, 0, 0, 2, 0, -1, 4
+			schedkwhen kSample5PlayTrig, 0, 0, 2, 0, -1, 5
 		elseif kSample5PlayTrig == 1 && kSample5Play == 0 then
-			schedkwhen kSample5PlayTrig, 0, 0, -2, 0, 1, 4
+			schedkwhen kSample5PlayTrig, 0, 0, -2, 0, 1, 5
 		endif	
 		
 	; Filtering
