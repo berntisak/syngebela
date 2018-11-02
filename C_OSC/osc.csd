@@ -75,16 +75,29 @@ nchnls = 2
 		kSample2PlayTrig = kSample2Play == 1 && changed(kSample2Play) == 1 ? 1 : 0 
 		kSample2Length = ftlen(2)/sr
 		
-		printk2 kSample2Play
-		printk2 kSample3Play
-		
 		kSample3PlayTrig = kSample3Play == 1 && changed(kSample3Play) == 1 ? 1 : 0 
 		kSample3Length = ftlen(3)/sr
 		
+		kSample4PlayTrig trigger kSample4Play, 0.5, 2  
+
+		kSample5PlayTrig trigger kSample5Play, 0.5, 2  
+
 		; ktrigger, kmintim, kmaxnum, kinsnum, kwhen, kdur [, ip4] [, ip5] [...]
 		schedkwhen kSample1PlayTrig, 0, 0, 2, 0, kSample1Length, 1
 		schedkwhen kSample2PlayTrig, 0, 0, 2, 0, kSample2Length, 2
 		schedkwhen kSample3PlayTrig, 0, 0, 2, 0, kSample3Length, 3
+		
+		if kSample4PlayTrig == 1 && kSample4Play == 1 then 
+			schedkwhen kSample4PlayTrig, 0, 0, 2, 0, -1, 4
+		elseif kSample4PlayTrig == 1 && kSample4Play == 0 then
+			schedkwhen kSample4PlayTrig, 0, 0, -2, 0, 1, 4
+		endif
+	
+		if kSample5PlayTrig == 1 && kSample5Play == 1 then 
+			schedkwhen kSample5PlayTrig, 0, 0, 2, 0, -1, 4
+		elseif kSample5PlayTrig == 1 && kSample5Play == 0 then
+			schedkwhen kSample5PlayTrig, 0, 0, -2, 0, 1, 4
+		endif	
 		
 	; Filtering
 /*
