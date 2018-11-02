@@ -161,10 +161,10 @@ nchnls = 2
 	ichnls = ftchnls(p4)
 	
 	if (ichnls == 1) then
-   		asigL loscil .8, 1, p4, 1
+   		asigL loscil .8, 1, p4, 1, 1
    		asigR = 	asigL
    	elseif (ichnls == 2) then
-		asigL, asigR loscil .8, 1, p4, 1
+		asigL, asigR loscil .8, 1, p4, 1, 1
 	else
    		asigL = 0
    		asigR = 0
